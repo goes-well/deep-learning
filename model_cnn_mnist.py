@@ -43,7 +43,7 @@ class CNN(tf.keras.Model):
         self.flatten = tf.keras.layers.Reshape(target_shape=(7 * 7 * 64,))
         self.dense1 = tf.keras.layers.Dense(units=1024, activation=tf.nn.relu)
         self.dense2 = tf.keras.layers.Dense(units=10)
-
+    @tf.function
     def call(self, inputs):
         x = self.conv1(inputs)                  # [batch_size, 28, 28, 32]
         x = self.pool1(x)                       # [batch_size, 14, 14, 32]
@@ -66,22 +66,23 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
 num_batches = int(data_loader.num_train_data // batch_size * num_epochs)
 for batch_index in range(num_batches):
-	X, y = data_loader.get_batch(batch_size)
-	with tf.GradientTape() as tape:
-		y_pred = model(X)
-		loss = tf.keras.losses.sparse_categorical_crossentropy(y_true=y, y_pred=y_pred)
-		loss = tf.reduce_mean(loss)
-		print("batch %d: loss %f" % (batch_index, loss.numpy()))
-	grads = tape.gradient(loss, model.variables)
-	optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
-	
+    X, y = data_loader.get_batch(batch_size)
+    with tf.GradientTape() as tape:
+        y_pred = model(X)
+        loss = tf.keras.losses.sparse_categorical_crossentropy(y_true=y, y_pred=y_pred)
+        loss = tf.reduce_mean(loss)
+        print("batch %d: loss %f" % (batch_index, loss.numpy()))
+    grads = tape.gradient(loss, model.variables)
+    optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
+    
 #模型的评估： tf.keras.metrics
 sparse_categorical_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
 num_batches = int(data_loader.num_test_data // batch_size)
 for batch_index in range(num_batches):
-	start_index, end_index = batch_index * batch_size, (batch_index + 1) * batch_size
-	y_pred = model.predict(data_loader.test_data[start_index: end_index])
-	sparse_categorical_accuracy.update_state(y_true=data_loader.test_label[start_index: end_index], y_pred=y_pred)
+    start_index, end_index = batch_index * batch_size, (batch_index + 1) * batch_size
+    y_pred = model.predict(data_loader.test_data[start_index: end_index])
+    sparse_categorical_accuracy.update_state(y_true=data_loader.test_label[start_index: end_index], y_pred=y_pred)
 print("test accuracy: %f" % sparse_categorical_accuracy.result())
-	
-	
+
+#保存模型
+tf.saved_model.save(model, "cnn_mnist")
